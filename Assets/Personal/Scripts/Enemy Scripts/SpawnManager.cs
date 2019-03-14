@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class SpawnManager : MonoBehaviour {
@@ -8,18 +9,20 @@ public class SpawnManager : MonoBehaviour {
     [SerializeField] GameObject[] enemyPrefabs;
     [SerializeField] DifficultyManager difficultyManager;
     List<GameObject>[] enemies = new List<GameObject>[System.Enum.GetValues(typeof(EnemyType)).Length];
-    [SerializeField] int[] baseSpawnLimits;
-    [SerializeField] float[] spawnLimitsGrowth;
-    [SerializeField] int[] spawnLimits; // = { 15, 5 };
+    int[] baseSpawnLimits;
+    float[] spawnLimitsGrowth;
+    int[] spawnLimits; 
     [SerializeField] GameObject enemiesParent;
     float[] spawnTimers = { 0, 0 };
     float[] baseTimesToNextSpawn = {1, 3 };
-    float[] spawnTimeRanges = {0.5f, 2};
-    float[] timesOfNextSpawn = {0, 0};
+    float[] spawnTimeRanges = {0.5f/2, 2/2};
+    float[] timesOfNextSpawn = {0, 0}; 
     GameObject player;
     TethersTracker tethersTracker;
     DifficultyValues difficultyValues;
+    bool[] hasTetherBeenSpawnedInto;
 
+    int totalEnemiesSpawned = 0;
 
     // Use this for initialization
     void Start () {
@@ -27,7 +30,6 @@ public class SpawnManager : MonoBehaviour {
         difficultyValues = difficultyManager.DifficultyValues;
         baseSpawnLimits = difficultyValues.SpawnDifficultyValues.BaseSpawnLimits;
         spawnLimitsGrowth = difficultyValues.SpawnDifficultyValues.SpawnLimitsGrowth;
-
 
         spawnLimits = new int[baseSpawnLimits.Length];
         for (int i = 0; i < spawnLimits.Length; i++)
@@ -52,10 +54,13 @@ public class SpawnManager : MonoBehaviour {
         {
             timesOfNextSpawn[i] = baseTimesToNextSpawn[i] + Random.Range(-spawnTimeRanges[i], spawnTimeRanges[i]);
         }
-	}
+
+        hasTetherBeenSpawnedInto = new bool[tethersTracker.Tethers.Length];
+    }
 
     // Update is called once per frame
     void Update() {
+        /*
         for (int i = 0; i < spawnTimers.Length; i++)
         {
             spawnTimers[i] += Time.deltaTime;
@@ -66,6 +71,54 @@ public class SpawnManager : MonoBehaviour {
             }
         }
         updateMaxSpawns();
+        */
+    }
+
+    public void ContinuouslySpawn()
+    {
+        for (int i = 0; i < spawnTimers.Length; i++)
+        {
+            spawnTimers[i] += Time.deltaTime;
+            if (CheckSpawn((EnemyType)i))
+            {
+                GameObject spawner = FindSpawner();
+                SpawnEnemy((EnemyType)i, spawner);
+            }
+        }
+    }
+
+    public void SpawnSubwave(int numToSpawn)
+    {
+        int totalSpawnLimit = spawnLimits.Sum();
+        float[] spawnPercent = new float[enemies.Length];
+        int[] spawnNumber = new int[enemies.Length];
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            spawnPercent[i] = (float)spawnLimits[i] / (float)totalSpawnLimit;
+            spawnNumber[i] = Mathf.FloorToInt(spawnPercent[i] * numToSpawn);
+        }
+        //Debug.Log("Percent of wave that is cylinders: " + spawnPercent[0]);
+
+        if (spawnNumber.Sum() != numToSpawn)
+        {
+            if (spawnNumber.Sum() > numToSpawn) {  
+                Debug.LogError("More enemies will spawn than intended in this subwave");
+            }
+            else {
+                //  if total enemies that will spawn < numToSpawn, fill with cylinder enemies
+                spawnNumber[0] += (numToSpawn - spawnNumber.Sum());
+            }
+        }
+
+        // for each type of enemy, spawn the calculated number of that enemy
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            for (int j = 0; j < spawnNumber[i]; j++)
+            {
+                GameObject spawner = FindSpawner();
+                SpawnEnemy((EnemyType)i, spawner);
+            }
+        }
     }
 
     bool CheckSpawn(EnemyType type)
@@ -96,13 +149,13 @@ public class SpawnManager : MonoBehaviour {
             weights[i] += (int)((tethers[i].TraceRatio) * 50);
             
 
-            if (weights[i] < minWeight)
+            if (weights[i] < minWeight && hasTetherBeenSpawnedInto[i] == false)
             {
                 minWeightIndex = i;
                 minWeight = weights[i];
             }
         }
-
+        hasTetherBeenSpawnedInto[minWeightIndex] = true;
         return tethers[minWeightIndex].gameObject;
     }
 
@@ -114,20 +167,51 @@ public class SpawnManager : MonoBehaviour {
         spawnTimers[(int)type] = 0;
         timesOfNextSpawn[(int)type] = baseTimesToNextSpawn[(int)type] + Random.Range(-spawnTimeRanges[(int)type], spawnTimeRanges[(int)type]);
         enemies[(int)type].Add(enemy);
+        totalEnemiesSpawned++;
     }
-
     public void DestroyEnemy(GameObject enemy)
     {
         enemies[(int)enemy.GetComponent<EnemyController>().Type].Remove(enemy);
         Destroy(enemy);
     }
 
-    public void updateMaxSpawns()
+    public void UpdateMaxSpawns(float difficulty)
     {
-        float difficulty = difficultyManager.Difficulty;
+        //float difficulty = difficultyManager.Difficulty;
         for (int i = 0; i < spawnLimits.Length; i++)
         {
             spawnLimits[i] = baseSpawnLimits[i] + Mathf.FloorToInt(spawnLimitsGrowth[i] * difficulty);
+        }
+    }
+
+    public void ClearHasTetherBeenSpawnedInto()
+    {
+        for (int i = 0; i < hasTetherBeenSpawnedInto.Length; i++)
+        {
+            hasTetherBeenSpawnedInto[i] = false;
+        }
+    }
+
+    public int CurrNumOfEnemiesAlive()
+    {
+        int currNumOfEnemiesAlive = 0;
+        foreach (List<GameObject> enemyType in enemies)
+        {
+            currNumOfEnemiesAlive += enemyType.Count;
+        }
+        return currNumOfEnemiesAlive;
+    }
+
+    public int TotalEnemiesSpawned
+    {
+        get
+        {
+            return totalEnemiesSpawned;
+        }
+
+        set
+        {
+            totalEnemiesSpawned = value;
         }
     }
 }

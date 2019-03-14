@@ -108,9 +108,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07921497f0af5694e812c92ad1c76eae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  comboTimeout: 2
+  comboTimeout: 2.5
   scoreText: {fileID: 0}
   comboText: {fileID: 0}
+  comboBar: {fileID: 0}
   scoreCanvas: {fileID: 1153371129242632, guid: 54fa9fa6505d82e4a9c72c662c907596,
     type: 3}
 --- !u!114 &114601830658752590
@@ -266,6 +267,7 @@ GameObject:
   - component: {fileID: 114812462051641692}
   - component: {fileID: 744898441}
   - component: {fileID: 744898450}
+  - component: {fileID: 1851651619850872098}
   - component: {fileID: 744898452}
   - component: {fileID: 1439987890184473724}
   m_Layer: 11
@@ -304,7 +306,7 @@ CharacterController:
   serializedVersion: 2
   m_Height: 2
   m_Radius: 0.5
-  m_SlopeLimit: 45
+  m_SlopeLimit: 90
   m_StepOffset: 0.5
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0
@@ -599,9 +601,25 @@ MonoBehaviour:
   baseSpawnLimits: 0300000001000000
   spawnLimitsGrowth:
   - 0.8
-  - 0.2
+  - 1.2
   spawnLimits: 
   enemiesParent: {fileID: 0}
+--- !u!114 &1851651619850872098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1355902032486888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cea3ba665c7e904488fcb091afe4333c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalEnemiesInWave: 20
+  timeBetweenWaves: 7
+  timeBetweenSubWaves: 10
+  spawnManager: {fileID: 744898450}
 --- !u!114 &744898452
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -644,8 +662,11 @@ MonoBehaviour:
   pickupPrefabs:
   - {fileID: 1474425910296937359, guid: cdbd996c91ee4fb43b146ecf6b0e0639, type: 3}
   - {fileID: 9062464723520462773, guid: 39a0ba106127d264f87db8bf5dd0a99f, type: 3}
-  nextSpawn: 5
-  pickupLimit: 10
+  pickupLimit: 4
+  upperBoundTime: 7
+  lowerBoundTime: 7
+  pickupsParent: {fileID: 0}
+  despawnTime: 45
 --- !u!1001 &2368544253589646412
 PrefabInstance:
   m_ObjectHideFlags: 0
